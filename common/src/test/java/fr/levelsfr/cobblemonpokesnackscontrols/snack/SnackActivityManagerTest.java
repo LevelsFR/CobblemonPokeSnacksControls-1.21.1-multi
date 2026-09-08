@@ -5,6 +5,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -48,9 +50,9 @@ final class SnackActivityManagerTest {
     }
 
     @Test
-    void nativeRadiusIsLockedToCobblemonOneSevenThree() {
-        assertEquals(8, NativeSnackArea.COBBLEMON_1_7_3_HORIZONTAL_RADIUS);
-        assertEquals(8, NativeSnackArea.COBBLEMON_1_7_3_VERTICAL_RADIUS);
+    void nativePokeSnackRadiusIsEightBlocks() {
+        assertEquals(8, NativeSnackArea.NATIVE_POKE_SNACK_HORIZONTAL_RADIUS);
+        assertEquals(8, NativeSnackArea.NATIVE_POKE_SNACK_VERTICAL_RADIUS);
     }
 
     @Test
@@ -151,6 +153,35 @@ final class SnackActivityManagerTest {
         assertFalse(manager.state(Level.OVERWORLD, first).orElseThrow().active());
         assertTrue(manager.state(Level.OVERWORLD, second).orElseThrow().active());
         assertTrue(manager.state(Level.OVERWORLD, third).orElseThrow().active());
+        assertEquals(
+                List.of(third, second),
+                manager.activeConsumptionCandidates(Level.OVERWORLD, first, third).stream()
+                        .map(state -> state.key().position())
+                        .toList()
+        );
+    }
+
+    @Test
+    void newestFirstWithOneSlotKeepsTheOlderSnackIneligible() {
+        SnackControlConfig config = new SnackControlConfig();
+        config.activity.maxActiveSnacksPerCluster = 1;
+        config.activity.activationOrder = SnackControlConfig.ActivationOrder.NEWEST_FIRST;
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+
+        BlockPos first = new BlockPos(0, 64, 0);
+        BlockPos second = new BlockPos(8, 64, 0);
+
+        manager.register(Level.OVERWORLD, first, null, 1);
+        manager.register(Level.OVERWORLD, second, null, 2);
+
+        assertFalse(manager.state(Level.OVERWORLD, first).orElseThrow().active());
+        assertTrue(manager.state(Level.OVERWORLD, second).orElseThrow().active());
+        assertEquals(
+                List.of(second),
+                manager.activeConsumptionCandidates(Level.OVERWORLD, first, first).stream()
+                        .map(state -> state.key().position())
+                        .toList()
+        );
     }
 
     @Test

@@ -1,10 +1,6 @@
 package fr.levelsfr.cobblemonpokesnackscontrols.effect;
 
-/**
- * Every native Cobblemon 1.7.3 Poké Snack influence family targeted by the V1 rule engine.
- * The adapter that maps Cobblemon bait effect identifiers to these categories is intentionally
- * deferred to the gameplay-hook phase.
- */
+/** Every native Cobblemon Poké Snack influence family controlled by the rule engine. */
 public enum SnackEffectCategory {
     TYPE_ATTRACTION,
     EGG_GROUP_ATTRACTION,
@@ -18,5 +14,8 @@ public enum SnackEffectCategory {
     LEVEL,
     FRIENDSHIP,
     DROPS,
-    BITE_TIME
+    BITE_TIME,
+    ALPHA,
+    MARK,
+    SIZE
 }

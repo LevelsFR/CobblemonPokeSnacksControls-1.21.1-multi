@@ -30,7 +30,15 @@ dependencies {
     modImplementation(fabricApi.module("fabric-lifecycle-events-v1", property("fabric_api_version").toString()))
 
     modImplementation("net.fabricmc:fabric-language-kotlin:${property("fabric_kotlin")}")
-    modImplementation("com.cobblemon:fabric:${property("cobblemon_version")}") { isTransitive = false }
+    modImplementation("com.cobblemon:fabric:${property("cobblemon_version")}")
+    // Cobblemon's Showdown runtime uses ICU on dedicated servers. Mark it as a
+    // server library so Loom does not filter it out as a Minecraft client-only dependency.
+    "minecraftServerRuntimeLibraries"("com.ibm.icu:icu4j:71.1")
+    modImplementation("me.shedaniel.cloth:cloth-config-fabric:${property("cloth_config_version")}") {
+        exclude(group = "net.fabricmc.fabric-api")
+    }
+    modCompileOnly("com.terraformersmc:modmenu:${property("mod_menu_version")}")
+    modRuntimeOnly("com.terraformersmc:modmenu:${property("mod_menu_version")}")
 
     implementation(project(":common", configuration = "namedElements"))
     "developmentFabric"(project(":common", configuration = "namedElements"))

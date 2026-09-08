@@ -38,6 +38,13 @@ public record ResolvedEffectRule(
         return Math.max(0.0D, nativeValue * valueMultiplier);
     }
 
+    public double applySignedValueMultiplier(double nativeValue) {
+        if (!enabled) {
+            return 0.0D;
+        }
+        return nativeValue * valueMultiplier;
+    }
+
     public double applyChanceMultiplier(double nativeChance) {
         if (!enabled) {
             return 0.0D;

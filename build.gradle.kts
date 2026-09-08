@@ -22,6 +22,8 @@ allprojects {
         mavenCentral()
         maven("https://artefacts.cobblemon.com/releases/")
         maven("https://api.modrinth.com/maven")
+        maven("https://maven.shedaniel.me/")
+        maven("https://maven.terraformersmc.com/releases/")
     }
 
     tasks {

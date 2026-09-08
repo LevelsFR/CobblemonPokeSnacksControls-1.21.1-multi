@@ -17,9 +17,9 @@ DELETE_FILES.txt
 *.jar
 crash-reports/
 logs/
-config/
+/config/
 saves/
 downloads/
 showdown/
 resourcepacks/
-resources/
+/resources/

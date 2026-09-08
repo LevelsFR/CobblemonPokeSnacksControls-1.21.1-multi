@@ -36,6 +36,7 @@ dependencies {
 
     modImplementation("com.cobblemon:neoforge:${property("cobblemon_version")}") { isTransitive = false }
     modCompileOnly("maven.modrinth:jade:${property("jade_version")}")
+    modImplementation("me.shedaniel.cloth:cloth-config-neoforge:${property("cloth_config_version")}")
     forgeRuntimeLibrary("thedarkcolour:kotlinforforge-neoforge:${property("kotlin_for_forge_version")}") {
         exclude("net.neoforged.fancymodloader", "loader")
     }

@@ -1,13 +1,17 @@
 package fr.levelsfr.cobblemonpokesnackscontrols.neoforge.client;
 
-import fr.levelsfr.cobblemonpokesnackscontrols.CobblemonPokeSnacksControls;
+import fr.levelsfr.cobblemonpokesnackscontrols.client.PokeSnacksConfigScreen;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 
 public final class CobblemonPokeSnacksControlsNeoForgeClient {
     private CobblemonPokeSnacksControlsNeoForgeClient() {
     }
 
     public static void registerConfigScreen(ModContainer container) {
-        CobblemonPokeSnacksControls.LOGGER.info("Client config screen is disabled; edit the server JSON config and use /pokesnackscontrols reload.");
+        container.registerExtensionPoint(
+                IConfigScreenFactory.class,
+                (modContainer, parent) -> PokeSnacksConfigScreen.create(parent)
+        );
     }
 }

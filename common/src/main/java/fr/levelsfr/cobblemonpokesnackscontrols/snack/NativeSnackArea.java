@@ -3,11 +3,11 @@ package fr.levelsfr.cobblemonpokesnackscontrols.snack;
 import net.minecraft.core.BlockPos;
 
 public record NativeSnackArea(BlockPos center, int horizontalRadius, int verticalRadius) {
-    public static final int COBBLEMON_1_7_3_HORIZONTAL_RADIUS = 8;
-    public static final int COBBLEMON_1_7_3_VERTICAL_RADIUS = 8;
+    public static final int NATIVE_POKE_SNACK_HORIZONTAL_RADIUS = 8;
+    public static final int NATIVE_POKE_SNACK_VERTICAL_RADIUS = 8;
 
     public static NativeSnackArea forPokeSnack(BlockPos center) {
-        return forPokeSnack(center, COBBLEMON_1_7_3_HORIZONTAL_RADIUS, COBBLEMON_1_7_3_VERTICAL_RADIUS);
+        return forPokeSnack(center, NATIVE_POKE_SNACK_HORIZONTAL_RADIUS, NATIVE_POKE_SNACK_VERTICAL_RADIUS);
     }
 
     public static NativeSnackArea forPokeSnack(BlockPos center, int horizontalRadius, int verticalRadius) {

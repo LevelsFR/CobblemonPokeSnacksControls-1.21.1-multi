@@ -47,7 +47,10 @@ enum PokeSnackJadeProvider implements IBlockComponentProvider, IServerDataProvid
             "ha_chance",
             "pokemon_chance",
             "friendship",
-            "rarity_bucket"
+            "rarity_bucket",
+            "alpha_chance",
+            "mark_chance",
+            "size"
     );
     private static final Map<String, String> COBBLEMON_STAT_KEYS = Map.of(
             "hp", "hp",

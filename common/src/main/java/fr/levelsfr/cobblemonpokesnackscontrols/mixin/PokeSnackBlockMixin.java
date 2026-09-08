@@ -19,9 +19,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = PokeSnackBlock.class, remap = false)
 public abstract class PokeSnackBlockMixin {
     @Inject(
-            method = "setPlacedBy(Lnet/minecraft/world/level/Level;Lnet/minecraft/core/BlockPos;Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;)V",
+            method = {"setPlacedBy", "method_9567"},
             at = @At("TAIL"),
-            remap = true
+            remap = false,
+            require = 1
     )
     private void cobblemonPokeSnacksControls$registerAfterPlacement(
             Level level,
@@ -37,10 +38,11 @@ public abstract class PokeSnackBlockMixin {
     }
 
     @Inject(
-            method = "randomTick(Lnet/minecraft/world/level/block/state/BlockState;Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/util/RandomSource;)V",
+            method = {"randomTick", "method_9514"},
             at = @At("HEAD"),
             cancellable = true,
-            remap = true
+            remap = false,
+            require = 1
     )
     private void cobblemonPokeSnacksControls$skipStandbySnackTick(
             BlockState state,

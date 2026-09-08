@@ -31,7 +31,9 @@ public final class CobblemonPokeSnacksControls {
             return;
         }
 
-        configManager = new ConfigManager(configDirectory.resolve(MOD_ID + ".json"));
+        Path configPath = configDirectory.resolve(MOD_ID).resolve(MOD_ID + ".json");
+        Path legacyConfigPath = configDirectory.resolve(MOD_ID + ".json");
+        configManager = new ConfigManager(configPath, legacyConfigPath);
         configManager.load();
         snackActivityManager = new SnackActivityManager(configManager::get);
         snackActivityManager.addListener(CobblemonPokeSnacksControls::logSnackStateChange);

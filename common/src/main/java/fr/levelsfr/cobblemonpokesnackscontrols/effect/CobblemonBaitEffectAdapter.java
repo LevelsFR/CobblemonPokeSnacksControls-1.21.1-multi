@@ -37,9 +37,11 @@ public final class CobblemonBaitEffectAdapter {
             }
 
             double chance = rule.applyChanceMultiplier(effect.getChance());
-            double value = rule.applyValueMultiplier(effect.getValue());
+            double value = category == SnackEffectCategory.SIZE
+                    ? rule.applySignedValueMultiplier(effect.getValue())
+                    : rule.applyValueMultiplier(effect.getValue());
             adjusted.add(new SpawnBait.Effect(effect.getType(), effect.getSubcategory(), chance, value));
-            totals.computeIfAbsent(category, ignored -> new Totals()).add(chance, value);
+            totals.computeIfAbsent(category, ignored -> new Totals()).add(chance, value, category == SnackEffectCategory.SIZE);
         }
 
         for (int index = 0; index < adjusted.size(); index++) {
@@ -55,7 +57,7 @@ public final class CobblemonBaitEffectAdapter {
             }
 
             double chance = scaleToCap(effect.getChance(), total.chance, rule.maximumChance());
-            double value = scaleToCap(effect.getValue(), total.value, rule.maximumValue());
+            double value = scaleToCap(effect.getValue(), total.valueMagnitude, rule.maximumValue());
             if (chance != effect.getChance() || value != effect.getValue()) {
                 adjusted.set(index, new SpawnBait.Effect(effect.getType(), effect.getSubcategory(), chance, value));
             }
@@ -85,16 +87,19 @@ public final class CobblemonBaitEffectAdapter {
         if (type.equals(effects.getFRIENDSHIP())) return SnackEffectCategory.FRIENDSHIP;
         if (type.equals(effects.getDROPS_REROLL())) return SnackEffectCategory.DROPS;
         if (type.equals(effects.getBITE_TIME())) return SnackEffectCategory.BITE_TIME;
+        if (type.equals(effects.getALPHA_CHANCE())) return SnackEffectCategory.ALPHA;
+        if (type.equals(effects.getMARK_CHANCE())) return SnackEffectCategory.MARK;
+        if (type.equals(effects.getSIZE())) return SnackEffectCategory.SIZE;
         return null;
     }
 
     private static final class Totals {
         private double chance;
-        private double value;
+        private double valueMagnitude;
 
-        private void add(double chance, double value) {
+        private void add(double chance, double value, boolean signed) {
             this.chance += chance;
-            this.value += value;
+            this.valueMagnitude += signed ? Math.abs(value) : value;
         }
     }
 }

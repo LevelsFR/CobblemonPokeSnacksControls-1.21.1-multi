@@ -29,7 +29,7 @@ import java.util.function.Supplier;
  * It does not replace Cobblemon's spawner or effect calculations.</p>
  */
 public final class SnackActivityManager {
-    private static final int CLUSTER_CELL_SIZE = NativeSnackArea.COBBLEMON_1_7_3_HORIZONTAL_RADIUS * 2 + 1;
+    private static final int CLUSTER_CELL_SIZE = NativeSnackArea.NATIVE_POKE_SNACK_HORIZONTAL_RADIUS * 2 + 1;
 
     private final Supplier<SnackControlConfig> configSupplier;
     private final Map<SnackKey, Entry> entries = new HashMap<>();
@@ -83,6 +83,35 @@ public final class SnackActivityManager {
     public synchronized Optional<SnackRuntimeState> state(ResourceKey<Level> dimension, BlockPos position) {
         Entry entry = entries.get(new SnackKey(dimension, position));
         return entry == null ? Optional.empty() : Optional.of(entry.state);
+    }
+
+    public synchronized List<SnackRuntimeState> activeConsumptionCandidates(
+            ResourceKey<Level> dimension,
+            BlockPos requestedSnack,
+            BlockPos consumerPosition
+    ) {
+        Entry requested = entries.get(new SnackKey(dimension, requestedSnack));
+        if (requested == null) {
+            return List.of();
+        }
+
+        Comparator<SnackRuntimeState> activationOrder = Comparator.comparingLong(SnackRuntimeState::placementSequence);
+        if (configSupplier.get().activity.activationOrder == SnackControlConfig.ActivationOrder.NEWEST_FIRST) {
+            activationOrder = activationOrder.reversed();
+        }
+
+        return entries.values().stream()
+                .map(entry -> entry.state)
+                .filter(SnackRuntimeState::active)
+                .filter(state -> state.key().dimension().equals(dimension))
+                .filter(state -> state.clusterId() == requested.state.clusterId())
+                .sorted(Comparator
+                        .comparingInt((SnackRuntimeState state) -> blockDistance(consumerPosition, state.key().position()))
+                        .thenComparing(activationOrder)
+                        .thenComparingInt(state -> state.key().position().getX())
+                        .thenComparingInt(state -> state.key().position().getY())
+                        .thenComparingInt(state -> state.key().position().getZ()))
+                .toList();
     }
 
     public synchronized Collection<SnackRuntimeState> snapshot() {

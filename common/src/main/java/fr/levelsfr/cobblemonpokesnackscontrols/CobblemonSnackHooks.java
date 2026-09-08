@@ -9,7 +9,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -74,6 +76,36 @@ public final class CobblemonSnackHooks {
     public static boolean mayAdvanceNativeSnack(ServerLevel level, PokeSnackBlockEntity blockEntity) {
         ensureSnackRegistered(level, blockEntity);
         return mayAdvanceNativeSnack(level.dimension(), blockEntity.getBlockPos());
+    }
+
+    public static Optional<PokeSnackBlockEntity> consumptionTarget(
+            ServerLevel level,
+            PokeSnackBlockEntity requestedSnack,
+            BlockPos consumerPosition
+    ) {
+        var config = CobblemonPokeSnacksControls.configManager().get();
+        if (!config.general.enabled) {
+            return Optional.of(requestedSnack);
+        }
+
+        ensureSnackRegistered(level, requestedSnack);
+        var manager = CobblemonPokeSnacksControls.snackActivityManager();
+        var requestedState = manager.state(level.dimension(), requestedSnack.getBlockPos());
+        if (requestedState.isEmpty() || requestedState.orElseThrow().active()) {
+            return Optional.of(requestedSnack);
+        }
+
+        for (var candidate : manager.activeConsumptionCandidates(
+                level.dimension(),
+                requestedSnack.getBlockPos(),
+                consumerPosition
+        )) {
+            BlockEntity blockEntity = level.getBlockEntity(candidate.key().position());
+            if (blockEntity instanceof PokeSnackBlockEntity pokeSnackBlockEntity && pokeSnackBlockEntity.isLure()) {
+                return Optional.of(pokeSnackBlockEntity);
+            }
+        }
+        return Optional.empty();
     }
 
     public static ResolvedEffectRule effectRule(SnackEffectCategory category) {

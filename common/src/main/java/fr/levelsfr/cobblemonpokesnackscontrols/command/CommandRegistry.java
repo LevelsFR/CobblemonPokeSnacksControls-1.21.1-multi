@@ -154,7 +154,7 @@ public final class CommandRegistry {
         ), false);
         source.sendSuccess(() -> statLine(
                 "command.cobblemon_pokesnacks_controls.queue.radius",
-                NativeSnackArea.COBBLEMON_1_7_3_HORIZONTAL_RADIUS + "/" + NativeSnackArea.COBBLEMON_1_7_3_VERTICAL_RADIUS,
+                NativeSnackArea.NATIVE_POKE_SNACK_HORIZONTAL_RADIUS + "/" + NativeSnackArea.NATIVE_POKE_SNACK_VERTICAL_RADIUS,
                 ChatFormatting.AQUA
         ), false);
         source.sendSuccess(() -> queueLine()
