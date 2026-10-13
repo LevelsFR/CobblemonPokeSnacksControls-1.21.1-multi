@@ -270,11 +270,166 @@ final class SnackActivityManagerTest {
         BlockPos position = new BlockPos(0, 64, 0);
 
         manager.register(Level.OVERWORLD, position, null, 42);
+        manager.flushDirtyDimensions();
         long recomputes = manager.diagnosticRecomputeCount();
         manager.register(Level.OVERWORLD, position, null, 43);
 
+        assertEquals(recomputes, manager.diagnosticRecomputeCount());
+        manager.state(Level.OVERWORLD, position);
         assertEquals(recomputes + 1, manager.diagnosticRecomputeCount());
         assertEquals(43, manager.state(Level.OVERWORLD, position).orElseThrow().placementSequence());
+    }
+
+    @Test
+    void identicalResolvedRegistrationDoesNotRecompute() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+        BlockPos position = new BlockPos(0, 64, 0);
+
+        manager.registerResolved(Level.OVERWORLD, position, null, 42);
+        manager.flushDirtyDimensions();
+        SnackRuntimeState firstState = manager.state(Level.OVERWORLD, position).orElseThrow();
+        long recomputes = manager.diagnosticRecomputeCount();
+
+        SnackActivityManager.RegistrationResult repeated =
+                manager.registerResolved(Level.OVERWORLD, position, null, 42);
+        manager.flushDirtyDimensions();
+
+        assertSame(firstState, repeated.state());
+        assertFalse(repeated.sequenceChanged());
+        assertEquals(recomputes, manager.diagnosticRecomputeCount());
+    }
+
+    @Test
+    void hundredsOfRegistrationsRecomputeDimensionOnlyOnceOnFlush() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+
+        for (int index = 0; index < 500; index++) {
+            manager.registerResolved(Level.OVERWORLD, new BlockPos(index * 20, 64, 0), null, index + 1L);
+        }
+
+        assertEquals(0, manager.diagnosticRecomputeCount());
+        manager.flushDirtyDimensions();
+        assertEquals(1, manager.diagnosticRecomputeCount());
+        manager.flushDirtyDimensions();
+        assertEquals(1, manager.diagnosticRecomputeCount());
+    }
+
+    @Test
+    void hundredsOfUnregistrationsRecomputeDimensionOnlyOnceOnFlush() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+
+        for (int index = 0; index < 400; index++) {
+            manager.registerResolved(Level.OVERWORLD, new BlockPos(index * 20, 64, 0), null, index + 1L);
+        }
+        manager.flushDirtyDimensions();
+        long recomputes = manager.diagnosticRecomputeCount();
+
+        for (int index = 0; index < 300; index++) {
+            manager.unregister(Level.OVERWORLD, new BlockPos(index * 20, 64, 0));
+        }
+
+        assertEquals(recomputes, manager.diagnosticRecomputeCount());
+        manager.flushDirtyDimensions();
+        assertEquals(recomputes + 1, manager.diagnosticRecomputeCount());
+    }
+
+    @Test
+    void flushPreservesActiveAndStandbyClusterQueue() {
+        SnackControlConfig config = new SnackControlConfig();
+        config.activity.maxActiveSnacksPerCluster = 2;
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+        BlockPos first = new BlockPos(0, 64, 0);
+        BlockPos second = new BlockPos(16, 64, 0);
+        BlockPos third = new BlockPos(32, 64, 0);
+
+        manager.registerResolved(Level.OVERWORLD, first, null, 1);
+        manager.registerResolved(Level.OVERWORLD, second, null, 2);
+        manager.registerResolved(Level.OVERWORLD, third, null, 3);
+        manager.flushDirtyDimensions();
+
+        List<SnackRuntimeState> states = manager.nearestQueue(Level.OVERWORLD, first).orElseThrow().states();
+        assertEquals(List.of(first, second, third), states.stream().map(state -> state.key().position()).toList());
+        assertTrue(states.get(0).active());
+        assertTrue(states.get(1).active());
+        assertFalse(states.get(2).active());
+        assertEquals(1, states.get(2).queuePosition());
+        assertEquals(3, states.get(2).clusterSize());
+    }
+
+    @Test
+    void dimensionReadFlushesOnlyItsRequiredState() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+        BlockPos position = new BlockPos(0, 64, 0);
+
+        manager.registerResolved(Level.OVERWORLD, position, null, 1);
+        manager.registerResolved(Level.NETHER, position, null, 2);
+
+        assertEquals(0, manager.diagnosticRecomputeCount());
+        assertTrue(manager.isActive(Level.OVERWORLD, position));
+        assertEquals(1, manager.diagnosticRecomputeCount());
+        assertTrue(manager.state(Level.NETHER, position).orElseThrow().active());
+        assertEquals(2, manager.diagnosticRecomputeCount());
+    }
+
+    @Test
+    void clearResetsDirtyDimensionsSequenceIndexAndAllocator() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+        BlockPos original = new BlockPos(0, 64, 0);
+        BlockPos replacement = new BlockPos(16, 64, 0);
+        BlockPos allocated = new BlockPos(32, 64, 0);
+
+        manager.registerResolved(Level.OVERWORLD, original, null, 100);
+        manager.clear();
+        manager.flushDirtyDimensions();
+
+        assertEquals(0, manager.diagnosticRecomputeCount());
+        SnackActivityManager.RegistrationResult reset =
+                manager.registerResolved(Level.OVERWORLD, allocated, null, 0);
+        SnackActivityManager.RegistrationResult reused =
+                manager.registerResolved(Level.OVERWORLD, replacement, null, 100);
+        assertFalse(reused.sequenceChanged());
+        assertEquals(1, reset.placementSequence());
+    }
+
+    @Test
+    void twoDirtyDimensionsAreRecomputedExactlyOnceEach() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+
+        for (int index = 0; index < 200; index++) {
+            manager.registerResolved(Level.OVERWORLD, new BlockPos(index * 20, 64, 0), null, index + 1L);
+            manager.registerResolved(Level.NETHER, new BlockPos(index * 20, 64, 0), null, index + 201L);
+        }
+
+        manager.flushDirtyDimensions();
+        assertEquals(2, manager.diagnosticRecomputeCount());
+        manager.flushDirtyDimensions();
+        assertEquals(2, manager.diagnosticRecomputeCount());
+    }
+
+    @Test
+    void replacedAndRemovedSequencesBecomeAvailableAgain() {
+        SnackControlConfig config = new SnackControlConfig();
+        SnackActivityManager manager = new SnackActivityManager(() -> config);
+        BlockPos first = new BlockPos(0, 64, 0);
+        BlockPos second = new BlockPos(16, 64, 0);
+        BlockPos third = new BlockPos(32, 64, 0);
+
+        manager.registerResolved(Level.OVERWORLD, first, null, 42);
+        manager.registerResolved(Level.OVERWORLD, first, null, 43);
+        SnackActivityManager.RegistrationResult afterReplacement =
+                manager.registerResolved(Level.OVERWORLD, second, null, 42);
+        manager.unregister(Level.OVERWORLD, first);
+        SnackActivityManager.RegistrationResult afterRemoval =
+                manager.registerResolved(Level.OVERWORLD, third, null, 43);
+
+        assertFalse(afterReplacement.sequenceChanged());
+        assertFalse(afterRemoval.sequenceChanged());
     }
 
     @Test

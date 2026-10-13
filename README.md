@@ -14,7 +14,7 @@ Cobblemon owns the native Poke Snack block, block entity, bait effects, and spaw
 - Mod Menu 11.0.3+ on Fabric to expose the configuration button
 - Jade is optional
 
-Because v2.0 uses internal mixins, metadata intentionally targets Cobblemon 1.8.x instead of claiming compatibility with future feature releases.
+Because v2.1 uses internal mixins, metadata intentionally targets Cobblemon 1.8.x instead of claiming compatibility with future feature releases.
 
 ## Active Capacity
 
@@ -71,8 +71,8 @@ Nature bait tooltips report the boosted stat Cobblemon exposes instead of invent
 
 Final remapped jars:
 
-- `fabric/build/libs/cobblemon-pokesnacks-controls-fabric-2.0.jar`
-- `neoforge/build/libs/cobblemon-pokesnacks-controls-neoforge-2.0.jar`
+- `fabric/build/libs/cobblemon-pokesnacks-controls-fabric-2.1.jar`
+- `neoforge/build/libs/cobblemon-pokesnacks-controls-neoforge-2.1.jar`
 
 ## License
 

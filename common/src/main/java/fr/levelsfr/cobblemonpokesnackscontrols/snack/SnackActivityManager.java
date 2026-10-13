@@ -33,7 +33,10 @@ public final class SnackActivityManager {
 
     private final Supplier<SnackControlConfig> configSupplier;
     private final Map<SnackKey, Entry> entries = new HashMap<>();
+    private final Map<Long, SnackKey> sequenceOwners = new HashMap<>();
+    private final Set<ResourceKey<Level>> dirtyDimensions = new HashSet<>();
     private final List<SnackStateListener> listeners = new CopyOnWriteArrayList<>();
+    private long nextSequence = 1L;
     private long recomputeCount;
 
     public SnackActivityManager(Supplier<SnackControlConfig> configSupplier) {
@@ -54,33 +57,43 @@ public final class SnackActivityManager {
 
     public synchronized RegistrationResult registerResolved(ResourceKey<Level> dimension, BlockPos position, UUID placedBy, long placementSequence) {
         SnackKey key = new SnackKey(dimension, position);
-        long normalizedSequence = normalizeSequence(key, placementSequence);
         Entry existing = entries.get(key);
+        if (existing != null
+                && existing.placementSequence == placementSequence
+                && Objects.equals(existing.placedBy, placedBy)) {
+            return new RegistrationResult(existing.state, existing.placementSequence, false);
+        }
+
+        long normalizedSequence = normalizeSequence(key, placementSequence);
         if (existing == null) {
             entries.put(key, new Entry(key, placedBy, normalizedSequence));
-        } else if (existing.placementSequence != normalizedSequence || !Objects.equals(existing.placedBy, placedBy)) {
-            entries.put(key, new Entry(key, placedBy, normalizedSequence));
         } else {
-            return new RegistrationResult(existing.state, existing.placementSequence, existing.placementSequence != placementSequence);
+            releaseSequence(existing);
+            entries.put(key, new Entry(key, placedBy, normalizedSequence));
         }
-        recomputeDimension(dimension);
+        sequenceOwners.put(normalizedSequence, key);
+        dirtyDimensions.add(dimension);
         Entry registered = entries.get(key);
         return new RegistrationResult(registered.state, registered.placementSequence, registered.placementSequence != placementSequence);
     }
 
     public synchronized void unregister(ResourceKey<Level> dimension, BlockPos position) {
         SnackKey key = new SnackKey(dimension, position);
-        if (entries.remove(key) != null) {
-            recomputeDimension(dimension);
+        Entry removed = entries.remove(key);
+        if (removed != null) {
+            releaseSequence(removed);
+            dirtyDimensions.add(dimension);
         }
     }
 
     public synchronized boolean isActive(ResourceKey<Level> dimension, BlockPos position) {
+        flushDirtyDimension(dimension);
         Entry entry = entries.get(new SnackKey(dimension, position));
         return entry != null && entry.state.active();
     }
 
     public synchronized Optional<SnackRuntimeState> state(ResourceKey<Level> dimension, BlockPos position) {
+        flushDirtyDimension(dimension);
         Entry entry = entries.get(new SnackKey(dimension, position));
         return entry == null ? Optional.empty() : Optional.of(entry.state);
     }
@@ -90,6 +103,7 @@ public final class SnackActivityManager {
             BlockPos requestedSnack,
             BlockPos consumerPosition
     ) {
+        flushDirtyDimension(dimension);
         Entry requested = entries.get(new SnackKey(dimension, requestedSnack));
         if (requested == null) {
             return List.of();
@@ -115,11 +129,14 @@ public final class SnackActivityManager {
     }
 
     public synchronized Collection<SnackRuntimeState> snapshot() {
-        return entries.values().stream().map(entry -> entry.state).toList();
+        flushDirtyDimensions();
+        return snapshotWithoutFlush();
     }
 
     public synchronized Optional<QueueView> nearestQueue(ResourceKey<Level> dimension, BlockPos origin) {
-        return snapshot().stream()
+        flushDirtyDimension(dimension);
+        return entries.values().stream()
+                .map(entry -> entry.state)
                 .filter(state -> state.key().dimension().equals(dimension))
                 .collect(HashMap<Long, List<SnackRuntimeState>>::new,
                         (clusters, state) -> clusters.computeIfAbsent(state.clusterId(), ignored -> new ArrayList<>()).add(state),
@@ -131,7 +148,9 @@ public final class SnackActivityManager {
     }
 
     public synchronized Optional<SnackRuntimeState> nearestState(ResourceKey<Level> dimension, BlockPos origin) {
-        return snapshot().stream()
+        flushDirtyDimension(dimension);
+        return entries.values().stream()
+                .map(entry -> entry.state)
                 .filter(state -> state.key().dimension().equals(dimension))
                 .min(Comparator
                         .comparingInt((SnackRuntimeState state) -> blockDistance(origin, state.key().position()))
@@ -139,7 +158,12 @@ public final class SnackActivityManager {
     }
 
     public synchronized Summary summary() {
-        Collection<SnackRuntimeState> states = snapshot();
+        flushDirtyDimensions();
+        Collection<SnackRuntimeState> states = snapshotWithoutFlush();
+        return summarize(states);
+    }
+
+    private static Summary summarize(Collection<SnackRuntimeState> states) {
         long active = states.stream().filter(SnackRuntimeState::active).count();
         long standby = states.size() - active;
         long clusters = states.stream()
@@ -151,8 +175,9 @@ public final class SnackActivityManager {
     }
 
     public synchronized Stats stats() {
-        Collection<SnackRuntimeState> states = snapshot();
-        Summary summary = summary();
+        flushDirtyDimensions();
+        Collection<SnackRuntimeState> states = snapshotWithoutFlush();
+        Summary summary = summarize(states);
         long dimensions = states.stream()
                 .map(state -> state.key().dimension())
                 .distinct()
@@ -175,11 +200,24 @@ public final class SnackActivityManager {
     public synchronized void refreshAll() {
         Set<ResourceKey<Level>> dimensions = new HashSet<>();
         entries.keySet().forEach(key -> dimensions.add(key.dimension()));
+        dirtyDimensions.clear();
+        dimensions.forEach(this::recomputeDimension);
+    }
+
+    public synchronized void flushDirtyDimensions() {
+        if (dirtyDimensions.isEmpty()) {
+            return;
+        }
+        Set<ResourceKey<Level>> dimensions = new HashSet<>(dirtyDimensions);
+        dirtyDimensions.clear();
         dimensions.forEach(this::recomputeDimension);
     }
 
     public synchronized void clear() {
         entries.clear();
+        sequenceOwners.clear();
+        dirtyDimensions.clear();
+        nextSequence = 1L;
     }
 
     synchronized long diagnosticRecomputeCount() {
@@ -333,19 +371,50 @@ public final class SnackActivityManager {
         if (requestedSequence <= 0L || isSequenceOwnedByAnotherSnack(key, requestedSequence)) {
             return allocateSequence();
         }
+        observeSequence(requestedSequence);
         return requestedSequence;
     }
 
     private boolean isSequenceOwnedByAnotherSnack(SnackKey key, long sequence) {
-        return entries.values().stream()
-                .anyMatch(entry -> entry.placementSequence == sequence && !entry.key.equals(key));
+        SnackKey owner = sequenceOwners.get(sequence);
+        return owner != null && !owner.equals(key);
     }
 
     private long allocateSequence() {
-        return entries.values().stream()
-                .mapToLong(entry -> entry.placementSequence)
-                .max()
-                .orElse(0L) + 1L;
+        while (nextSequence > 0L && sequenceOwners.containsKey(nextSequence)) {
+            if (nextSequence == Long.MAX_VALUE) {
+                throw new IllegalStateException("No placement sequence remains available");
+            }
+            nextSequence++;
+        }
+        if (nextSequence <= 0L) {
+            throw new IllegalStateException("No placement sequence remains available");
+        }
+        long allocated = nextSequence;
+        if (nextSequence < Long.MAX_VALUE) {
+            nextSequence++;
+        }
+        return allocated;
+    }
+
+    private void observeSequence(long sequence) {
+        if (sequence >= nextSequence) {
+            nextSequence = sequence == Long.MAX_VALUE ? Long.MAX_VALUE : sequence + 1L;
+        }
+    }
+
+    private void releaseSequence(Entry entry) {
+        sequenceOwners.remove(entry.placementSequence, entry.key);
+    }
+
+    private void flushDirtyDimension(ResourceKey<Level> dimension) {
+        if (dirtyDimensions.remove(dimension)) {
+            recomputeDimension(dimension);
+        }
+    }
+
+    private Collection<SnackRuntimeState> snapshotWithoutFlush() {
+        return entries.values().stream().map(entry -> entry.state).toList();
     }
 
     private static Map<GridCell, List<Entry>> buildSpatialIndex(List<Entry> entries) {

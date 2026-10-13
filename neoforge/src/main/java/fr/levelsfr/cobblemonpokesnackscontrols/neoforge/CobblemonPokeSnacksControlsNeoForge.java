@@ -1,6 +1,7 @@
 package fr.levelsfr.cobblemonpokesnackscontrols.neoforge;
 
 import fr.levelsfr.cobblemonpokesnackscontrols.CobblemonPokeSnacksControls;
+import fr.levelsfr.cobblemonpokesnackscontrols.CobblemonSnackHooks;
 import fr.levelsfr.cobblemonpokesnackscontrols.command.CommandRegistry;
 import fr.levelsfr.cobblemonpokesnackscontrols.lifecycle.CommonServerLifecycle;
 import fr.levelsfr.cobblemonpokesnackscontrols.neoforge.client.CobblemonPokeSnacksControlsNeoForgeClient;
@@ -13,6 +14,7 @@ import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
 @Mod(CobblemonPokeSnacksControls.MOD_ID)
 public final class CobblemonPokeSnacksControlsNeoForge {
@@ -37,5 +39,10 @@ public final class CobblemonPokeSnacksControlsNeoForge {
     @SubscribeEvent
     public void onServerStopping(ServerStoppingEvent event) {
         CommonServerLifecycle.onServerStopping(event.getServer());
+    }
+
+    @SubscribeEvent
+    public void onServerTickPost(ServerTickEvent.Post event) {
+        CobblemonSnackHooks.onServerTickEnd(event.getServer());
     }
 }

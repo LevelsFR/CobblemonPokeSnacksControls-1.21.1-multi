@@ -3,10 +3,12 @@ package fr.levelsfr.cobblemonpokesnackscontrols;
 import com.cobblemon.mod.common.block.entity.PokeSnackBlockEntity;
 import fr.levelsfr.cobblemonpokesnackscontrols.effect.ResolvedEffectRule;
 import fr.levelsfr.cobblemonpokesnackscontrols.effect.SnackEffectCategory;
+import fr.levelsfr.cobblemonpokesnackscontrols.lifecycle.DeferredUpdateQueue;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackPlacementSequenceCarrier;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackPlacementSequenceData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -19,6 +21,9 @@ import java.util.UUID;
  * Keeping all hook calls here prevents gameplay-specific code from leaking into loader entrypoints.
  */
 public final class CobblemonSnackHooks {
+    private static final DeferredUpdateQueue<PokeSnackBlockEntity> DEFERRED_SEQUENCE_SAVES =
+            new DeferredUpdateQueue<>();
+
     private CobblemonSnackHooks() {
     }
 
@@ -45,7 +50,7 @@ public final class CobblemonSnackHooks {
             if (sequence <= 0L) {
                 sequence = sequenceData.next();
                 carrier.cobblemonPokeSnacksControls$setPlacementSequence(sequence);
-                blockEntity.setChanged();
+                deferSequenceSave(blockEntity);
             } else {
                 sequenceData.observe(sequence);
             }
@@ -54,12 +59,41 @@ public final class CobblemonSnackHooks {
             if (result.sequenceChanged()) {
                 sequence = result.placementSequence();
                 carrier.cobblemonPokeSnacksControls$setPlacementSequence(sequence);
-                blockEntity.setChanged();
+                deferSequenceSave(blockEntity);
             }
             sequenceData.observe(sequence);
             return;
         }
         onSnackAvailable(level.dimension(), blockEntity.getBlockPos(), blockEntity.getPlacedBy());
+    }
+
+    /**
+     * Runs loader-neutral end-of-tick work after chunk post-loading has completed.
+     * Calling {@link BlockEntity#setChanged()} directly from {@code setLevel()} can
+     * synchronously request the chunk which is currently being post-loaded and
+     * deadlock the server thread.
+     */
+    public static void onServerTickEnd(MinecraftServer server) {
+        flushDeferredUpdates(server);
+        CobblemonPokeSnacksControls.snackActivityManager().flushDirtyDimensions();
+    }
+
+    public static void flushDeferredUpdates(MinecraftServer server) {
+        DEFERRED_SEQUENCE_SAVES.flush(blockEntity -> {
+            if (!blockEntity.isRemoved()
+                    && blockEntity.getLevel() instanceof ServerLevel level
+                    && level.getServer() == server) {
+                blockEntity.setChanged();
+            }
+        });
+    }
+
+    public static void clearDeferredUpdates() {
+        DEFERRED_SEQUENCE_SAVES.clear();
+    }
+
+    private static void deferSequenceSave(PokeSnackBlockEntity blockEntity) {
+        DEFERRED_SEQUENCE_SAVES.enqueue(blockEntity);
     }
 
     public static boolean mayAdvanceNativeSnack(ResourceKey<Level> dimension, BlockPos position) {
