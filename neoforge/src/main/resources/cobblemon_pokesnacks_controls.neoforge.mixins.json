@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "fr.levelsfr.cobblemonpokesnackscontrols.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BlockEntityLifecycleMixin",
+    "PokeSnackBlockEntityMixin",
+    "PokeSnackBlockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

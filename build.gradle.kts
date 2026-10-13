@@ -19,6 +19,7 @@ allprojects {
     group = project.properties["maven_group"]!!
 
     repositories {
+        mavenLocal()
         mavenCentral()
         maven("https://artefacts.cobblemon.com/releases/")
         maven("https://api.modrinth.com/maven")

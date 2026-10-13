@@ -4,6 +4,7 @@ import fr.levelsfr.cobblemonpokesnackscontrols.config.ConfigManager;
 import fr.levelsfr.cobblemonpokesnackscontrols.effect.SnackEffectRuleEngine;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackActivityManager;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackRuntimeState;
+import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackSpawnHistory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +20,7 @@ public final class CobblemonPokeSnacksControls {
     private static final AtomicBoolean INITIALIZED = new AtomicBoolean(false);
     private static ConfigManager configManager;
     private static SnackActivityManager snackActivityManager;
+    private static SnackSpawnHistory snackSpawnHistory;
     private static SnackEffectRuleEngine effectRuleEngine;
 
     private CobblemonPokeSnacksControls() {
@@ -36,6 +38,7 @@ public final class CobblemonPokeSnacksControls {
         configManager = new ConfigManager(configPath, legacyConfigPath);
         configManager.load();
         snackActivityManager = new SnackActivityManager(configManager::get);
+        snackSpawnHistory = new SnackSpawnHistory();
         snackActivityManager.addListener(CobblemonPokeSnacksControls::logSnackStateChange);
         effectRuleEngine = new SnackEffectRuleEngine(configManager::get);
 
@@ -57,6 +60,11 @@ public final class CobblemonPokeSnacksControls {
     public static SnackEffectRuleEngine effectRuleEngine() {
         ensureInitialized();
         return effectRuleEngine;
+    }
+
+    public static SnackSpawnHistory snackSpawnHistory() {
+        ensureInitialized();
+        return snackSpawnHistory;
     }
 
     private static void ensureInitialized() {

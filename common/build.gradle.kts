@@ -15,6 +15,7 @@ dependencies {
     minecraft("com.mojang:minecraft:${property("minecraft_version")}")
     mappings(loom.officialMojangMappings())
     modImplementation("com.cobblemon:mod:${property("cobblemon_version")}") { isTransitive = false }
+    modCompileOnly("com.ourstory:os-cobblemon-library-common:${property("os_cobblemon_library_version")}")
     compileOnly("net.fabricmc:sponge-mixin:0.17.3+mixin.0.8.7")
     compileOnly("net.fabricmc:fabric-loader:${property("fabric_loader_version")}")
     modCompileOnly("maven.modrinth:jade:${property("jade_version")}")

@@ -1,6 +1,6 @@
 # Cobblemon PokeSnacks Controls
 
-Server-side multi-loader sidemod for Minecraft 1.21.1 and Cobblemon 1.8.x.
+Server-side multi-loader sidemod for Minecraft 1.21.1 and Cobblemon 1.8.2.
 
 Cobblemon owns the native Poke Snack block, block entity, bait effects, and spawning behavior. This mod only manages how many loaded native Poke Snacks may progress in an overlapping area and optionally adjusts native bait-effect inputs from server config.
 
@@ -8,13 +8,14 @@ Cobblemon owns the native Poke Snack block, block entity, bait effects, and spaw
 
 - Java 21
 - Minecraft 1.21.1
-- Cobblemon 1.8.x
+- Cobblemon 1.8.2 up to, but not including, 1.9.0
+- [OS Cobblemon Library](https://github.com/LevelsFR/OS-Cobblemon-Library) 1.3.0+
 - Fabric Loader 0.17.2+ with Fabric API 0.116.6+1.21.1, or NeoForge 21.1.182+
 - Cloth Config 15.0.140+ on the client for the in-game configuration screen
 - Mod Menu 11.0.3+ on Fabric to expose the configuration button
 - Jade is optional
 
-Because v2.1 uses internal mixins, metadata intentionally targets Cobblemon 1.8.x instead of claiming compatibility with future feature releases.
+This release uses internal mixins, so metadata intentionally targets Cobblemon 1.8.2 up to, but not including, 1.9.0. OS Cobblemon Library is required on both loaders and supplies immutable Pokémon identity snapshots for the latest-spawn display and rare-spawn alerts.
 
 ## Active Capacity
 
@@ -36,6 +37,9 @@ Runtime queue state is rebuilt from loaded snacks on server startup. The runtime
 - `/pokesnackscontrols status` requires permission level 2
 - `/pokesnackscontrols stats` requires permission level 2
 - `/pokesnackscontrols reload` requires permission level 2
+- `/pokesnackscontrols snack give <item-id> [item-id ...]` requires permission level 2 and gives the executing player a native Poké Snack lure made from up to eight ingredients.
+
+The snack command combines the Cobblemon bait-effect entries registered for each ingredient by the active datapacks. Use namespaced item IDs; tab completion suggests registry items. Items without registered bait effects cannot be used. The resulting lure keeps the native Cobblemon effects, which still pass through this mod's configured balancing rules.
 
 Reload re-reads server JSON config, refreshes tracked queue state, and reports failure if config recovery or saving fails.
 
@@ -49,7 +53,7 @@ Malformed JSON or wrong value types are logged, moved aside with a unique `.brok
 
 ## Effects
 
-Known Cobblemon `SpawnBait.Effect` categories are adjusted as copied values for the current native calculation. Unknown datapack effects pass through unchanged.
+Known Cobblemon `SpawnBait.Effect` categories are adjusted as copied values for the current native calculation. Unknown datapack effects pass through unchanged. The admin snack command creates an item stack with Cobblemon's native bait-effects component; ordinary balancing does not rewrite stored snack item or block-entity components.
 
 Multipliers are applied first. Where a configured final chance/value cap is meaningful for the native effect category, the mod caps the aggregate category total so stacked effects cannot exceed the configured maximum after Cobblemon merges them. Size uses a signed value: its multiplier and maximum magnitude preserve both positive and negative native effects. The mod does not mutate Cobblemon registries, item stack components, or block entity components.
 
@@ -59,11 +63,21 @@ Reloaded effect rules apply when Cobblemon asks the Poke Snack block entity for 
 
 ## Jade
 
-Jade is optional. Loader entrypoints and common server initialization do not require Jade classes. When present, Jade can show status, capacity, operator queue position, and bait effects using only data sent by the server provider.
+Jade is optional. Loader entrypoints and common server initialization do not require Jade classes. When present, Jade can show status, capacity, operator queue position, bait effects, and the last successful Pokémon spawn for each snack using only data sent by the server provider. Spawn history lasts for the current server session and is cleared when the server stops.
+
+Rare-spawn alerts are disabled by default. When enabled in the server config, the online player who placed the snack is notified if it attracts a Shiny, Alpha, or marked Pokémon.
 
 Nature bait tooltips report the boosted stat Cobblemon exposes instead of inventing a full Pokemon nature.
 
 ## Build
+
+For source builds, make OS Cobblemon Library 1.3.0 available in Maven Local first. From the library's matching stable source version, run:
+
+```powershell
+.\gradlew.bat publishAllToMavenLocal
+```
+
+Then build this project:
 
 ```bash
 ./gradlew clean build
@@ -71,8 +85,8 @@ Nature bait tooltips report the boosted stat Cobblemon exposes instead of invent
 
 Final remapped jars:
 
-- `fabric/build/libs/cobblemon-pokesnacks-controls-fabric-2.1.jar`
-- `neoforge/build/libs/cobblemon-pokesnacks-controls-neoforge-2.1.jar`
+- `fabric/build/libs/cobblemon-pokesnacks-controls-fabric-2.2.jar`
+- `neoforge/build/libs/cobblemon-pokesnacks-controls-neoforge-2.2.jar`
 
 ## License
 

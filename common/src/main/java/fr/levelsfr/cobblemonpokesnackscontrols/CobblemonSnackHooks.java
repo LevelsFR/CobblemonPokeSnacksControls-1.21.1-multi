@@ -37,6 +37,7 @@ public final class CobblemonSnackHooks {
 
     public static void onSnackRemoved(ResourceKey<Level> dimension, BlockPos position) {
         CobblemonPokeSnacksControls.snackActivityManager().unregister(dimension, position);
+        CobblemonPokeSnacksControls.snackSpawnHistory().remove(dimension, position);
     }
 
     public static void ensureSnackRegistered(ServerLevel level, PokeSnackBlockEntity blockEntity) {

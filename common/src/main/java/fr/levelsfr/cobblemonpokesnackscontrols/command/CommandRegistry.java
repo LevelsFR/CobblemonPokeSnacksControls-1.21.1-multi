@@ -1,6 +1,15 @@
 package fr.levelsfr.cobblemonpokesnackscontrols.command;
 
+import com.cobblemon.mod.common.CobblemonItemComponents;
+import com.cobblemon.mod.common.CobblemonItems;
+import com.cobblemon.mod.common.api.fishing.SpawnBaitEffects;
+import com.cobblemon.mod.common.item.components.BaitEffectsComponent;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import fr.levelsfr.cobblemonpokesnackscontrols.CobblemonPokeSnacksControls;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.NativeSnackArea;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackActivityManager;
@@ -10,11 +19,22 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static net.minecraft.commands.Commands.literal;
 
@@ -39,7 +59,87 @@ public final class CommandRegistry {
                 .then(literal("stats").requires(source -> source.hasPermission(2)).executes(command -> showStats(command.getSource())))
                 .then(literal("debug").requires(source -> source.hasPermission(2))
                         .then(literal("nearest").executes(command -> debugNearest(command.getSource()))))
-                .then(literal("reload").requires(source -> source.hasPermission(2)).executes(command -> reload(command.getSource())));
+                .then(literal("reload").requires(source -> source.hasPermission(2)).executes(command -> reload(command.getSource())))
+                .then(literal("snack")
+                        .then(literal("give").requires(source -> source.hasPermission(2))
+                                .then(com.mojang.brigadier.builder.RequiredArgumentBuilder
+                                        .<CommandSourceStack, String>argument("ingredients", StringArgumentType.greedyString())
+                                        .suggests(CommandRegistry::suggestSnackIngredients)
+                                        .executes(CommandRegistry::giveSnack))));
+    }
+
+    private static CompletableFuture<Suggestions> suggestSnackIngredients(
+            CommandContext<CommandSourceStack> command,
+            SuggestionsBuilder builder
+    ) {
+        String remaining = builder.getRemaining();
+        int lastSpace = remaining.lastIndexOf(' ');
+        int ingredientStart = lastSpace + 1;
+        String ingredientPrefix = remaining.substring(ingredientStart);
+        SuggestionsBuilder ingredientBuilder = builder.createOffset(builder.getStart() + ingredientStart);
+
+        List<ResourceLocation> ingredients = new ArrayList<>();
+        for (ResourceLocation itemId : BuiltInRegistries.ITEM.keySet()) {
+            if (!itemId.toString().startsWith(ingredientPrefix)) {
+                continue;
+            }
+
+            Item item = BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
+            if (item != null && item != Items.AIR
+                    && !SpawnBaitEffects.getBaitIdentifiersFromItem(new ItemStack(item).getItemHolder()).isEmpty()) {
+                ingredients.add(itemId);
+            }
+        }
+        return SharedSuggestionProvider.suggestResource(ingredients, ingredientBuilder);
+    }
+
+    private static int giveSnack(CommandContext<CommandSourceStack> command) throws CommandSyntaxException {
+        CommandSourceStack source = command.getSource();
+        ServerPlayer player = source.getPlayerOrException();
+        String[] ingredientIds = StringArgumentType.getString(command, "ingredients").trim().split("\\s+");
+        if (ingredientIds.length > 8) {
+            source.sendFailure(Component.translatable("command.cobblemon_pokesnacks_controls.snack.too_many_ingredients"));
+            return 0;
+        }
+
+        List<ResourceLocation> baitEffectIds = new ArrayList<>();
+        for (String ingredientId : ingredientIds) {
+            ResourceLocation itemId = ResourceLocation.tryParse(ingredientId);
+            Item item = itemId == null ? null : BuiltInRegistries.ITEM.getOptional(itemId).orElse(null);
+            if (item == null || item == Items.AIR) {
+                source.sendFailure(Component.translatable(
+                        "command.cobblemon_pokesnacks_controls.snack.invalid_ingredient",
+                        ingredientId
+                ));
+                return 0;
+            }
+
+            List<ResourceLocation> ingredientEffects = SpawnBaitEffects.getBaitIdentifiersFromItem(
+                    new ItemStack(item).getItemHolder()
+            );
+            if (ingredientEffects.isEmpty()) {
+                source.sendFailure(Component.translatable(
+                        "command.cobblemon_pokesnacks_controls.snack.no_bait_effects",
+                        itemId
+                ));
+                return 0;
+            }
+            baitEffectIds.addAll(ingredientEffects);
+        }
+
+        ItemStack snack = new ItemStack(CobblemonItems.POKE_SNACK);
+        snack.set(CobblemonItemComponents.BAIT_EFFECTS, new BaitEffectsComponent(baitEffectIds));
+        if (!player.getInventory().add(snack)) {
+            player.drop(snack, false);
+        }
+
+        int effectCount = baitEffectIds.size();
+        source.sendSuccess(() -> Component.translatable(
+                "command.cobblemon_pokesnacks_controls.snack.given",
+                ingredientIds.length,
+                effectCount
+        ), false);
+        return 1;
     }
 
     private static int showStatus(CommandSourceStack source) {

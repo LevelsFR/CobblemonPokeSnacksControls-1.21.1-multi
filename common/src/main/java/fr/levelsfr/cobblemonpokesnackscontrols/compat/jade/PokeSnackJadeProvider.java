@@ -5,10 +5,13 @@ import com.cobblemon.mod.common.api.fishing.SpawnBait;
 import com.cobblemon.mod.common.api.fishing.SpawnBaitUtils;
 import fr.levelsfr.cobblemonpokesnackscontrols.CobblemonPokeSnacksControls;
 import fr.levelsfr.cobblemonpokesnackscontrols.CobblemonSnackHooks;
+import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackSpawnHistory;
 import fr.levelsfr.cobblemonpokesnackscontrols.snack.SnackStatus;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -24,6 +27,7 @@ import snownee.jade.api.config.IPluginConfig;
 
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -75,6 +79,11 @@ enum PokeSnackJadeProvider implements IBlockComponentProvider, IServerDataProvid
             CobblemonSnackHooks.ensureSnackRegistered(serverLevel, pokeSnackBlockEntity);
         }
         writeBaitEffects(data, pokeSnackBlockEntity);
+        if (config.jade.showLastSpawn) {
+            CobblemonPokeSnacksControls.snackSpawnHistory()
+                    .lastSpawn(accessor.getLevel().dimension(), accessor.getPosition())
+                    .ifPresent(recentSpawn -> writeLastSpawn(data, recentSpawn, accessor.getLevel().registryAccess()));
+        }
 
         CobblemonPokeSnacksControls.snackActivityManager()
                 .state(accessor.getLevel().dimension(), accessor.getPosition())
@@ -107,6 +116,7 @@ enum PokeSnackJadeProvider implements IBlockComponentProvider, IServerDataProvid
         if (!data.contains(PokeSnackJadeData.STATUS)
                 && !data.contains(PokeSnackJadeData.ACTIVE_COUNT)
                 && !data.contains(PokeSnackJadeData.QUEUE_POSITION)
+                && !data.contains(PokeSnackJadeData.LAST_SPAWN_NAME)
                 && !data.contains(PokeSnackJadeData.BAIT_EFFECTS, Tag.TAG_LIST)) {
             return;
         }
@@ -142,6 +152,8 @@ enum PokeSnackJadeProvider implements IBlockComponentProvider, IServerDataProvid
                     data.getInt(PokeSnackJadeData.QUEUE_POSITION)
             ).withStyle(ChatFormatting.GRAY));
         }
+
+        appendLastSpawn(tooltip, accessor, data);
     }
 
     @Override
@@ -168,6 +180,89 @@ enum PokeSnackJadeProvider implements IBlockComponentProvider, IServerDataProvid
             effectTags.add(effectTag);
         }
         data.put(PokeSnackJadeData.BAIT_EFFECTS, effectTags);
+    }
+
+    private static void writeLastSpawn(
+            CompoundTag data,
+            SnackSpawnHistory.RecentSpawn recentSpawn,
+            HolderLookup.Provider registries
+    ) {
+        var pokemon = recentSpawn.pokemon();
+        data.putString(PokeSnackJadeData.LAST_SPAWN_NAME,
+                Component.Serializer.toJson(pokemon.displayName(), registries));
+        data.putString(PokeSnackJadeData.LAST_SPAWN_SPECIES, pokemon.speciesId().toString());
+        data.putString(PokeSnackJadeData.LAST_SPAWN_FORM, pokemon.formId());
+        data.putBoolean(PokeSnackJadeData.LAST_SPAWN_SHINY, pokemon.shiny());
+        data.putBoolean(PokeSnackJadeData.LAST_SPAWN_ALPHA, pokemon.alpha());
+
+        ListTag marks = new ListTag();
+        for (String markId : recentSpawn.markIds()) {
+            marks.add(StringTag.valueOf(markId));
+        }
+        data.put(PokeSnackJadeData.LAST_SPAWN_MARKS, marks);
+    }
+
+    private static void appendLastSpawn(ITooltip tooltip, BlockAccessor accessor, CompoundTag data) {
+        if (!data.contains(PokeSnackJadeData.LAST_SPAWN_NAME)) {
+            return;
+        }
+
+        Component displayName;
+        try {
+            displayName = Component.Serializer.fromJson(
+                    data.getString(PokeSnackJadeData.LAST_SPAWN_NAME),
+                    accessor.getLevel().registryAccess()
+            );
+        } catch (RuntimeException exception) {
+            displayName = null;
+        }
+        if (displayName == null) {
+            displayName = Component.literal(data.getString(PokeSnackJadeData.LAST_SPAWN_SPECIES));
+        }
+
+        tooltip.add(Component.translatable("jade.cobblemon_pokesnacks_controls.last_spawn", displayName)
+                .withStyle(ChatFormatting.GRAY));
+        String formId = data.getString(PokeSnackJadeData.LAST_SPAWN_FORM);
+        if (!formId.isBlank()) {
+            tooltip.add(Component.translatable("jade.cobblemon_pokesnacks_controls.last_spawn.form", formId)
+                    .withStyle(ChatFormatting.GRAY));
+        }
+        if (data.getBoolean(PokeSnackJadeData.LAST_SPAWN_SHINY)) {
+            tooltip.add(Component.translatable("jade.cobblemon_pokesnacks_controls.last_spawn.shiny")
+                    .withStyle(ChatFormatting.GOLD));
+        }
+        if (data.getBoolean(PokeSnackJadeData.LAST_SPAWN_ALPHA)) {
+            tooltip.add(Component.translatable("jade.cobblemon_pokesnacks_controls.last_spawn.alpha")
+                    .withStyle(ChatFormatting.RED));
+        }
+
+        ListTag marks = data.getList(PokeSnackJadeData.LAST_SPAWN_MARKS, Tag.TAG_STRING);
+        if (!marks.isEmpty()) {
+            List<String> markNames = new ArrayList<>(marks.size());
+            for (int index = 0; index < marks.size(); index++) {
+                markNames.add(formatMarkName(marks.getString(index)));
+            }
+            tooltip.add(Component.translatable(
+                    "jade.cobblemon_pokesnacks_controls.last_spawn.marks",
+                    String.join(", ", markNames)
+            ).withStyle(ChatFormatting.AQUA));
+        }
+    }
+
+    private static String formatMarkName(String markId) {
+        int namespaceSeparator = markId.indexOf(':');
+        String path = namespaceSeparator >= 0 ? markId.substring(namespaceSeparator + 1) : markId;
+        StringBuilder name = new StringBuilder(path.length());
+        for (String word : path.split("_")) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            if (name.length() > 0) {
+                name.append(' ');
+            }
+            name.append(Character.toUpperCase(word.charAt(0))).append(word, 1, word.length());
+        }
+        return name.toString();
     }
 
     private static void appendBaitEffects(ITooltip tooltip, CompoundTag data) {
