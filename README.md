@@ -96,3 +96,11 @@ PokéSnacks Controls is licensed under the Mozilla Public License 2.0.
 
 - A production-like dedicated server boot with the final jars was not run in this workspace.
 - Reloaded effect settings were covered by automated adapter tests, but in-game confirmation of any Cobblemon-internal cached snack influences remains manual validation work.
+
+## Project guide and verified downloads
+
+[Complete project guide](docs/PROJECT_GUIDE.md) — features, dependency metadata, commands, configuration, source map and build instructions.
+
+- [Source repository](https://github.com/LevelsFR/CobblemonPokeSnacksControls-1.21.1-multi/tree/master) (public).
+- [CurseForge](https://www.curseforge.com/minecraft/mc-mods/pokesnacks-controls) — published project verified under LevelsFR.
+- [Modrinth](https://modrinth.com/mod/pokesnacks-controls) — approved project in the LevelsFR profile.
