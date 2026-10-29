@@ -1,3 +1,9 @@
+# Cobblemon PokeSnacks Controls v2.2.1
+
+## Changes
+
+* Updated **OS Cobblemon Library** to **1.5.2** for the latest-spawn display and rare Pokémon alerts.
+
 # Cobblemon PokeSnacks Controls v2.2
 
 ## New
