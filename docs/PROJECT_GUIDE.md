@@ -2,7 +2,7 @@
 
 Server-side capacity, queue and bait-effect controls for native Cobblemon Poké Snacks.
 
-Source and publication snapshot: **2026-10-21**. This guide describes the checked-out source; a download page can contain an earlier release.
+Source and publication snapshot: **2026-10-29**. This guide describes the checked-out source; a download page can contain an earlier release.
 
 ## Status and official links
 
@@ -22,7 +22,7 @@ Source and publication snapshot: **2026-10-21**. This guide describes the checke
 
 | Component | Value |
 | --- | --- |
-| Source version | `2.2` |
+| Source version | `2.2.1` |
 | Minecraft baseline | `1.21.1` |
 | JDK | `21` |
 | Active branch | `master` |
@@ -33,15 +33,15 @@ Source and publication snapshot: **2026-10-21**. This guide describes the checke
 | Fabric | `fabric-api` | `>=0.116.6+1.21.1` | required |
 | Fabric | `minecraft` | `1.21.1` | required |
 | Fabric | `java` | `>=21` | required |
-| Fabric | `cobblemon` | `>=1.8.2 <1.9.0` | required |
-| Fabric | `os_cobblemon_library` | `>=1.3.0` | required |
+| Fabric | `cobblemon` | `>=1.8.2 <1.8.5` | required |
+| Fabric | `os_cobblemon_library` | `>=1.5.2` | required |
 | Fabric | `cloth-config` | `>=15.0.140` | recommends |
 | Fabric | `modmenu` | `>=11.0.3` | recommends |
 | Fabric | `jade` | `*` | suggests |
 | NeoForge | `minecraft` | `[1.21.1,1.21.2)` | required; BOTH |
 | NeoForge | `neoforge` | `[21.1.182,)` | required; BOTH |
-| NeoForge | `cobblemon` | `[1.8.2,1.9.0)` | required; BOTH |
-| NeoForge | `os_cobblemon_library` | `[1.3.0,)` | required; BOTH |
+| NeoForge | `cobblemon` | `[1.8.2,1.8.5)` | required; BOTH |
+| NeoForge | `os_cobblemon_library` | `[1.5.2,)` | required; BOTH |
 | NeoForge | `jade` | `[0,)` | optional; BOTH |
 | NeoForge | `cloth_config` | `[15.0.140,)` | required; CLIENT |
 
@@ -130,7 +130,7 @@ Run commands from the repository root using a matching JDK and the committed Gra
 
 Loader JARs are normally written under the corresponding `build/libs` directory. Aggregate projects document their collected artifact layout in the main README or build helper.
 
-The build pins OS Cobblemon Library `1.3.0`. Inspect the build repositories before compiling; projects that resolve it from Maven Local need the matching local publication. See the [library Maven Local guide](https://github.com/LevelsFR/OS-Cobblemon-Library/blob/1.21.1/main/docs/LOCAL_MAVEN.md).
+The build pins OS Cobblemon Library `1.5.2`. Inspect the build repositories before compiling; projects that resolve it from Maven Local need the matching local publication. See the [library Maven Local guide](https://github.com/LevelsFR/OS-Cobblemon-Library/blob/levelsfr/oscl-1.5.2-loader-detection/docs/LOCAL_MAVEN.md).
 
 ## Documentation index
 

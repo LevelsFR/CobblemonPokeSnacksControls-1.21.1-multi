@@ -8,14 +8,14 @@ Cobblemon owns the native Poke Snack block, block entity, bait effects, and spaw
 
 - Java 21
 - Minecraft 1.21.1
-- Cobblemon 1.8.2 up to, but not including, 1.9.0
-- [OS Cobblemon Library](https://github.com/LevelsFR/OS-Cobblemon-Library) 1.3.0+
+- Cobblemon 1.8.2 up to, but not including, 1.8.5
+- [OS Cobblemon Library](https://github.com/LevelsFR/OS-Cobblemon-Library) 1.5.2+
 - Fabric Loader 0.17.2+ with Fabric API 0.116.6+1.21.1, or NeoForge 21.1.182+
 - Cloth Config 15.0.140+ on the client for the in-game configuration screen
 - Mod Menu 11.0.3+ on Fabric to expose the configuration button
 - Jade is optional
 
-This release uses internal mixins, so metadata intentionally targets Cobblemon 1.8.2 up to, but not including, 1.9.0. OS Cobblemon Library is required on both loaders and supplies immutable Pokémon identity snapshots for the latest-spawn display and rare-spawn alerts.
+This release uses internal mixins, so metadata intentionally targets Cobblemon 1.8.2 up to, but not including, 1.8.5. OS Cobblemon Library is required on both loaders and supplies immutable Pokémon identity snapshots for the latest-spawn display and rare-spawn alerts.
 
 ## Active Capacity
 
@@ -71,7 +71,7 @@ Nature bait tooltips report the boosted stat Cobblemon exposes instead of invent
 
 ## Build
 
-For source builds, make OS Cobblemon Library 1.3.0 available in Maven Local first. From the library's matching stable source version, run:
+For source builds, make OS Cobblemon Library 1.5.2 available in Maven Local first. From the library's matching source version, run:
 
 ```powershell
 .\gradlew.bat publishAllToMavenLocal
